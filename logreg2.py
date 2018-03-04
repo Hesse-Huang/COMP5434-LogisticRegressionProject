@@ -1,129 +1,165 @@
 import numpy as np
 import pandas as pd
-
-# Normalization
-def normalize(dataFrame):
-    return (dataFrame - dataFrame.min()) / (dataFrame.max() - dataFrame.min())
+from sklearn import linear_model
 
 
-def logistic(theta, x):
-    # print('\nnp.dot(x, theta) = {}\n'.format(np.dot(x, theta)))
-    # print('\nlogistic result = {}\n'.format(1 / (1 + np.exp(-np.dot(x, theta)))))
-    return 1 / (1 + np.exp(-np.dot(x, theta)))
+class LogisticRegressionModel:
+    """The model to handle logistic regression"""
 
-def cost(h, y):
-    return -np.mean((y * np.log(h)) + ((1 - y) * np.log(1 - h)))
+    def __init__(self):
+        pass
 
 
-def runLogisticRegression(x, y, theta, iteration, alpha):
+    def fit(self, X, y, theta, iteration, alpha):
 
-    previous_cost = cost(logistic(theta, x), y)
+        previous_cost = self.__cost(self.__logistic(theta, X), y)
 
-    for k in range(iteration):
+        for k in range(iteration):
 
-        new_theta = []
-        for j in range(len(theta)):
-            nt = theta[j] - alpha * np.mean((logistic(theta, x) - y) * x[j])
-            new_theta.append(nt)
-            # print('\n\ntheta[{}] = {}\nalpha = {}\nlogistic(theta, x) = {}\nlogistic(theta, x) - y = \n{}\nx[{}] = \n{}\nnp.mean((logistic(theta, x) - y) * x[j]) = \n{}\n\n'.format(
-            #     j,
-            #     theta[j],
-            #     alpha,
-            #     logistic(theta, x),
-            #     logistic(theta, x) - y,
-            #     j,
-            #     x[j],
-            #     np.mean((logistic(theta, x) - y) * x[j])
-            # ))
+            new_theta = []
 
-        theta = new_theta
-        print('Iteration #{} :'.format(k + 1))
-        print('new theta = \n{}'.format(new_theta))
+            for j in range(len(theta)):
+                nt = theta[j] - alpha * np.mean((self.__logistic(theta, X) - y) * X[j])
+                new_theta.append(nt)
+                # print('\n\ntheta[{}] = {}\nalpha = {}\nlogistic(theta, x) = {}\nlogistic(theta, x) - y = \n{}\nx[{}] = \n{}\nnp.mean((logistic(theta, x) - y) * x[j]) = \n{}\n\n'.format(
+                #     j,
+                #     theta[j],
+                #     alpha,
+                #     logistic(theta, x),
+                #     logistic(theta, x) - y,
+                #     j,
+                #     x[j],
+                #     np.mean((logistic(theta, x) - y) * x[j])
+                # ))
 
-        new_cost = cost(logistic(new_theta, x), y)
-        print('J = {}, Δ = {}\n'.format(new_cost, new_cost - previous_cost))
+            theta = new_theta
+            print('Iteration #{} :'.format(k + 1))
+            # print('new theta = \n{}'.format(new_theta))
+            for (i, t) in enumerate(new_theta):
+                print('θ{} = {}'.format(i + 1, t))
 
-    return theta
+            new_cost = self.__cost(self.__logistic(new_theta, X), y)
+            print('J = {}, Δ = {}\n'.format(new_cost, new_cost - previous_cost))
+
+        self.theta = theta
+        return theta
+
+    def predict(self, X):
+        predicted_y = self.__logistic(self.theta, X)
+        print('my predicted y =')
+        print(predicted_y)
+        return [int(v) for v in np.where(predicted_y > 0.5, 1, 0)]
+
+    # Normalization
+    def __normalize(self, dataFrame):
+        return (dataFrame - dataFrame.min()) / (dataFrame.max() - dataFrame.min())
+
+    # The hypothesis function
+    def __logistic(self, theta, x):
+        return 1 / (1 + np.exp(-np.dot(x, theta)))
+
+    # The cost function, aka J function
+    def __cost(self, h, y):
+        return -np.mean((y * np.log(h)) + ((1 - y) * np.log(1 - h)))
 
 
-def runDiabetesDataSet():
+def validate_with_sklearn(X, y, predictingX):
+    logreg = linear_model.LogisticRegression()
+    logreg.fit(X, y)
+    logreg.predict(predictingX)
+    result = [int(r) for r in logreg.predict(predictingX)]
+    print('sklearn predicted result = \n{}'.format(result))
+
+
+def diabetes_dataset():
     dataset = './Dataset/diabetes_dataset.csv'
 
-    columns = [
-        'Number of times pregnant',
-        'Plasma glucose concentration',
-        'Diastolic blood pressure',
-        'Triceps skin fold thickness',
-        'Serum insulin',
-        'BMI',
-        'Diabetes pedigree function',
-        'Age',
-        'Class variable'
-    ]
-    dataFrame = pd.read_csv(dataset, header=None, names=np.arange(1, 10))
-    dataFrame.insert(0, 0, 1)
-    # data.columns = columns
+    df = pd.read_csv(dataset, header=None, names=np.arange(1, 10))
+    df.insert(0, 0, 1)
+
+    # df.columns = [
+    #     'Number of times pregnant',
+    #     'Plasma glucose concentration',
+    #     'Diastolic blood pressure',
+    #     'Triceps skin fold thickness',
+    #     'Serum insulin',
+    #     'BMI',
+    #     'Diabetes pedigree function',
+    #     'Age',
+    #     'Class variable'
+    # ]
 
     # x = normalize(dataFrame.ix[:, :8])
-    # after normalization, column 0 becomes NaN
-    # x[0] = 1
+    # x[0] = 1 # after normalization, column 0 becomes NaN
 
-    x = dataFrame.ix[:, :8]
-    y = dataFrame[9]  # 768 y values
+    X = df.ix[:, :8]
+    y = df[9]  # 768 y values
     theta = np.array([-6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # len = 9
 
-    theta = runLogisticRegression(x, y, theta, iteration=500, alpha=0.000255)
+    return (X, y, theta)
 
-    return theta
+def split(X, y, portion):
+    count = int(len(X) * portion)
+    training_X = X.iloc[: -count, :]
+    training_y = y[: -count]
+    testing_X = X.iloc[-count: , :]
+    testing_y = y[-count:]
+    return (training_X, training_y, testing_X, testing_y)
 
-def runTestSample(theta):
-    testDataset = './Dataset/test_samples.csv'
-    dataFrame = pd.read_csv(testDataset, header=None, names=np.arange(1, 9))
-    dataFrame.insert(0, 0, 1)
-    print(dataFrame)
+def error_rate(predicted_y, ground_truth_y):
+    y1 = np.array(predicted_y)
+    y2 = np.array(ground_truth_y)
+    return np.mean(np.abs(y1 - y2))
+
+
+def test_sample():
+    test_dataset = './Dataset/test_samples.csv'
+
+    df = pd.read_csv(test_dataset, header=None, names=np.arange(1, 9))
+    df.insert(0, 0, 1)
+    # print(dataFrame)
+
     # x = normalize(dataFrame.ix[:, :8])
     # x[0] = 1
 
-    x = dataFrame.ix[:, :8]
-    predicted_y = logistic(theta, x)
-    print(predicted_y)
-    print('My predicted result =')
-    print([int(r) for r in np.where(predicted_y > 0.5, 1, 0)])
+    X = df.ix[:, :8]
+    return X
 
-def runExample():
-    data = [
-        [55, 130, 0],
-        [58, 160, 1],
-        [62, 148, 0],
-        [67, 186, 1]
-    ]
-    dataFrame = pd.DataFrame(data, columns=[1, 2, 3], dtype=np.float64)
-    dataFrame.insert(0, 0, 1)
-    print(dataFrame)
-    # x = normalize(dataFrame.ix[:, :2])
-    # x[0] = 1
-    x = dataFrame.ix[:, :2]
-    y = dataFrame[3]
-    print(x)
-    print(y)
-
-    theta = np.array([0.0, 0.0, 0.0])
-    # logisticRegression(data, iteration=500, alpha=0.002)
-    runLogisticRegression(x, y, theta, 500, 0.002)
-
-from logreg import validateWithSklearn
 
 if __name__ == '__main__':
-    # runExample()
-    theta = runDiabetesDataSet()
-    # theta = [-6.0001912691823875, 0.02165496180764577, 0.030991577379505527, -0.013117801415925143, 0.006417413200072739, -0.00086181170268060856, 0.046813179427385346, 0.0019464356359718935, 0.023055837604493094]
-    # J = 0.49171945310758075, Δ = -1.6045062320301497
-    runTestSample(theta)
+    # load the diabetes dataset
+    (X, y, theta) = diabetes_dataset()
+    # split the trainingg dataset by 20%
+    (training_X, training_y, cv_X, cv_y) = split(X, y, 0.2)
 
-    validateWithSklearn()
-    # [0.20409552  0.06024204  0.22735258  0.6666928   0.4319579   0.05999181
-    #  0.13590673  0.20094398  0.87030158  0.02350539  0.5862682   0.22218152
-    #  0.31523186  0.14277819  0.23562528  0.56214336  0.1051052   0.73242782
-    #  0.43983493  0.1756029   0.57929172  0.44655204  0.12644887  0.23855408
-    #  0.22201285  0.47160416  0.37924086  0.20009919  0.65198341  0.11446384]
-    # [0 0 0 1 0 0 0 0 1 0 1 0 0 0 0 1 0 1 0 0 1 0 0 0 0 0 0 0 1 0]
+    model = LogisticRegressionModel()
+    model.fit(training_X, training_y, theta, iteration=500, alpha=0.000255)
+
+    tested_y = model.predict(cv_X)
+    print('testing y = \n', list(cv_y))
+    print('tested y = \n', tested_y)
+    print('error rate = \n', error_rate(tested_y, cv_y))
+
+    predicting_X = test_sample()
+    predicted_y = model.predict(predicting_X)
+    print('my predicted result =')
+    print(predicted_y)
+
+    validate_with_sklearn(X, y, predicting_X)
+
+# testing y =
+#  [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0]
+# tested y =
+#  [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0]
+# error rate = 0.222222222222
+# my predicted y =
+# [ 0.19540834  0.06221878  0.24437646  0.68044723  0.42790872  0.06253981
+#   0.13143393  0.21184273  0.83409151  0.02709623  0.57719967  0.23323624
+#   0.32820875  0.15915501  0.231035    0.56594949  0.11080122  0.74435404
+#   0.4260598   0.17781125  0.61334309  0.45731944  0.12762545  0.17411757
+#   0.2100293   0.50010686  0.38886434  0.20626956  0.60440581  0.11264872]
+# my predicted result =
+# [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0]
+# sklearn predicted result =
+# [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]
+
