@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from sklearn import linear_model
 
 
@@ -7,52 +8,54 @@ class LogisticRegressionModel:
     """The model to handle logistic regression"""
 
     def __init__(self):
-        pass
-
+        self.cost_records = []
 
     def fit(self, X, y, theta, iteration, alpha):
 
+        cost_records = []
         previous_cost = self.__cost(self.__logistic(theta, X), y)
 
         for k in range(iteration):
-
             new_theta = []
-
             for j in range(len(theta)):
                 nt = theta[j] - alpha * np.mean((self.__logistic(theta, X) - y) * X[j])
                 new_theta.append(nt)
-                # print('\n\ntheta[{}] = {}\nalpha = {}\nlogistic(theta, x) = {}\nlogistic(theta, x) - y = \n{}\nx[{}] = \n{}\nnp.mean((logistic(theta, x) - y) * x[j]) = \n{}\n\n'.format(
-                #     j,
-                #     theta[j],
-                #     alpha,
-                #     logistic(theta, x),
-                #     logistic(theta, x) - y,
-                #     j,
-                #     x[j],
-                #     np.mean((logistic(theta, x) - y) * x[j])
-                # ))
-
             theta = new_theta
             print('Iteration #{} :'.format(k + 1))
-            # print('new theta = \n{}'.format(new_theta))
+
             for (i, t) in enumerate(new_theta):
-                print('θ{} = {}'.format(i + 1, t))
+                print('θ{} = {}'.format(i, t))
 
             new_cost = self.__cost(self.__logistic(new_theta, X), y)
             print('J = {}, Δ = {}\n'.format(new_cost, new_cost - previous_cost))
+            previous_cost = new_cost
+            cost_records.append(new_cost)
 
         self.theta = theta
+        self.cost_records.append((alpha, cost_records))
+
         return theta
 
     def predict(self, X):
         predicted_y = self.__logistic(self.theta, X)
-        print('my predicted y =')
-        print(predicted_y)
         return [int(v) for v in np.where(predicted_y > 0.5, 1, 0)]
 
-    # Normalization
-    def __normalize(self, dataFrame):
-        return (dataFrame - dataFrame.min()) / (dataFrame.max() - dataFrame.min())
+    def plot_cost_function_variation(self):
+        plots = []
+        alphas = []
+        for (alpha, cost_records) in self.cost_records:
+            y = cost_records
+            x = range(len(y))
+            p = plt.scatter(x, y, s=2)
+            plots.append(p)
+            alphas.append(alpha)
+
+        plt.title('Evolvement of Cost Function Value')
+        plt.xlabel('Number of Iteration')
+        plt.ylabel('J(θ)')
+
+        labels = ['α = {}'.format(a) for a in alphas]
+        plt.legend(handles=plots, labels=labels)
 
     # The hypothesis function
     def __logistic(self, theta, x):
@@ -63,36 +66,20 @@ class LogisticRegressionModel:
         return -np.mean((y * np.log(h)) + ((1 - y) * np.log(1 - h)))
 
 
-def validate_with_sklearn(X, y, predictingX):
+def validate_with_sklearn(X, y, predicting_X):
     logreg = linear_model.LogisticRegression()
     logreg.fit(X, y)
-    logreg.predict(predictingX)
-    result = [int(r) for r in logreg.predict(predictingX)]
-    print('sklearn predicted result = \n{}'.format(result))
+    logreg.predict(predicting_X)
+    result = [int(r) for r in logreg.predict(predicting_X)]
+    return result
 
 
 def diabetes_dataset():
     dataset = './Dataset/diabetes_dataset.csv'
-
     df = pd.read_csv(dataset, header=None, names=np.arange(1, 10))
     df.insert(0, 0, 1)
 
-    # df.columns = [
-    #     'Number of times pregnant',
-    #     'Plasma glucose concentration',
-    #     'Diastolic blood pressure',
-    #     'Triceps skin fold thickness',
-    #     'Serum insulin',
-    #     'BMI',
-    #     'Diabetes pedigree function',
-    #     'Age',
-    #     'Class variable'
-    # ]
-
-    # x = normalize(dataFrame.ix[:, :8])
-    # x[0] = 1 # after normalization, column 0 becomes NaN
-
-    X = df.ix[:, :8]
+    X = df.iloc[:, :9]
     y = df[9]  # 768 y values
     theta = np.array([-6.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # len = 9
 
@@ -114,52 +101,61 @@ def error_rate(predicted_y, ground_truth_y):
 
 def test_sample():
     test_dataset = './Dataset/test_samples.csv'
-
     df = pd.read_csv(test_dataset, header=None, names=np.arange(1, 9))
     df.insert(0, 0, 1)
-    # print(dataFrame)
-
-    # x = normalize(dataFrame.ix[:, :8])
-    # x[0] = 1
-
-    X = df.ix[:, :8]
+    X = df.iloc[:, :9]
     return X
 
 
 if __name__ == '__main__':
     # load the diabetes dataset
     (X, y, theta) = diabetes_dataset()
-    # split the trainingg dataset by 20%
+    # split the training dataset by 20%
     (training_X, training_y, cv_X, cv_y) = split(X, y, 0.2)
 
     model = LogisticRegressionModel()
-    model.fit(training_X, training_y, theta, iteration=500, alpha=0.000255)
 
-    tested_y = model.predict(cv_X)
-    print('testing y = \n', list(cv_y))
-    print('tested y = \n', tested_y)
-    print('error rate = \n', error_rate(tested_y, cv_y))
+    # uncomment these three lines if you want to compare different alpha on a graph
+    # model.fit(training_X, training_y, theta, iteration=500, alpha=0.001000)
+    # model.fit(training_X, training_y, theta, iteration=500, alpha=0.000030)
+    # model.fit(training_X, training_y, theta, iteration=500, alpha=0.000005)
+    model.fit(training_X, training_y, theta, iteration=500, alpha=0.000288)
+
+    # uncomment the following line of code if you want to plot cost function variation
+    # model.plot_cost_function_variation()
+
+    cv_predicted_y = model.predict(cv_X)
+    print('[20% cross validation] ground truth y = \n', list(cv_y))
+    print('[20% cross validation] predicted y = \n', cv_predicted_y)
+    print('[20% cross validation] error rate = \n', error_rate(cv_predicted_y, cv_y))
 
     predicting_X = test_sample()
     predicted_y = model.predict(predicting_X)
-    print('my predicted result =')
-    print(predicted_y)
+    print('[test sample] my predicted result =\n{}'.format(predicted_y))
 
-    validate_with_sklearn(X, y, predicting_X)
+    result = validate_with_sklearn(X, y, predicting_X)
+    print('[test sample] sklearn predicted result = \n{}'.format(result))
 
-# testing y =
+
+# Iteration #500 :
+# θ0 = -6.000196781930353
+# θ1 = 0.023242005168141424
+# θ2 = 0.028818544308311874
+# θ3 = -0.01192406877290299
+# θ4 = 0.0032677609382930394
+# θ5 = -0.0003714984835183602
+# θ6 = 0.057551866141246764
+# θ7 = 0.0024377987090487634
+# θ8 = 0.018707523363176565
+# J = 0.4907776746149357, Δ = -1.2655252140614248e-05
+#
+# [20% cross validation] ground truth y =
 #  [0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 1, 1, 1, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 0, 1, 0, 1, 1, 1, 0, 0, 1, 1, 1, 0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0]
-# tested y =
+# [20% cross validation] predicted y =
 #  [0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 1, 0, 0, 1, 1, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 1, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0]
-# error rate = 0.222222222222
-# my predicted y =
-# [ 0.19540834  0.06221878  0.24437646  0.68044723  0.42790872  0.06253981
-#   0.13143393  0.21184273  0.83409151  0.02709623  0.57719967  0.23323624
-#   0.32820875  0.15915501  0.231035    0.56594949  0.11080122  0.74435404
-#   0.4260598   0.17781125  0.61334309  0.45731944  0.12762545  0.17411757
-#   0.2100293   0.50010686  0.38886434  0.20626956  0.60440581  0.11264872]
-# my predicted result =
+# [20% cross validation] error rate =
+#  0.222222222222
+# [test sample] my predicted result =
 # [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 1, 0]
-# sklearn predicted result =
+# [test sample] sklearn predicted result =
 # [0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0]
-
